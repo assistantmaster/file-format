@@ -6,35 +6,12 @@ import numpy
 
 pygame.init()
 pygame.display.set_caption("Image Viewer")
-screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
-font = pygame.font.Font(None, 50)
 
-def show_progress(y, total):
-    screen.fill((255, 255, 255))
-    t = font.render(f"{round(y / total * 100, 1)}% ({y}/{total})", True, (0, 0, 0))
-    screen.blit(t, (screen.get_width() // 2 - t.get_width() // 2,
-                    screen.get_height() // 2 - t.get_height() // 2))
-    pygame.display.flip()
+if len(sys.argv) != 2:
+    print("Bitte gib eine Datei an.")
+    sys.exit()
 
-opengui = True
-while opengui:
-    screen.fill((255, 255, 255))
-    text = font.render("Bitte ziehe eine Datei in das Fenster.", True, (0, 0, 0))
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            opengui = False
-        
-        if event.type == pygame.DROPFILE:
-            file = event.file
-            if file.endswith(".tho"):
-                path = file
-                opengui = False
-
-    screen.blit(text, (screen.get_width() // 2 - text.get_width() // 2,
-                       screen.get_height() // 2 - text.get_height() // 2))
-    
-    pygame.display.flip()
+path = sys.argv[1]
 
 PIX_DEC = re.compile(r'\((\d+,\d+,\d+(?:,\d+)?)\)')
 PIX_HEX_OLD = re.compile(r'\(([0-9A-Fa-f]+(?:,[0-9A-Fa-f]+){2,3})\)')
@@ -149,8 +126,6 @@ def parse_tho(path):
                 for x, m in enumerate(PIX_DEC.findall(line)):
                     vals = [int(v) for v in m.split(",")]
                     arr[y, x] = vals[:4] if channels==4 else vals[:3]
-        
-        show_progress(y, len(lines))
 
     return arr
 
@@ -159,13 +134,10 @@ arr = parse_tho(path)
 h, w = arr.shape[:2]
 channels = arr.shape[2] if len(arr.shape) > 2 else 1
 
-screen = pygame.display.set_mode((1280, 720), flags=pygame.HIDDEN)
-screen = pygame.display.set_mode((w, h), flags=pygame.SHOWN)
-
-if channels == 4:
-    surface = pygame.image.frombuffer(arr.tobytes(), (w, h), 'RGBA')
-else:
-    surface = pygame.image.frombuffer(arr.tobytes(), (w, h), 'RGB')
+screen = pygame.display.set_mode((w, h))
+flag = pygame.SRCALPHA if channels == 4 else 0
+surface = pygame.Surface((w, h), flag)
+pygame.surfarray.blit_array(surface, arr.swapaxes(0, 1)[:, :, :3] if channels == 3 else arr.swapaxes(0, 1))
 
 running = True
 while running:
